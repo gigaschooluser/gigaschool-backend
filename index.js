@@ -1,20 +1,25 @@
-// Fichier : gigaschool-backend/index.js
+// Fichier : index.js (version corrigée pour le développement local)
 
 const express = require('express');
-// CORRECTION : On importe "ObjectId" pour pouvoir manipuler les ID de la base de données.
 const { MongoClient, ObjectId } = require('mongodb');
 const cors = require('cors');
+
+// ===============================================================
+// LIGNE AJOUTÉE : Cette instruction est cruciale pour lire votre fichier .env localement.
+require('dotenv').config();
+// ===============================================================
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Render utilise des variables d'environnement directement
+// Cette ligne va maintenant trouver la variable car dotenv l'a chargée
 const uri = process.env.MONGODB_URI;
 const port = process.env.PORT || 5000;
 
 if (!uri) {
   console.error("ERREUR : La variable d'environnement MONGODB_URI est manquante !");
+  console.error("Vérifiez que vous avez bien un fichier .env avec votre clé à la racine du projet backend.");
   process.exit(1);
 }
 
@@ -46,28 +51,18 @@ async function run() {
       const result = await coursesCollection.insertOne(courseDocument);
       res.status(201).json(result);
     });
-
+    
     // Route pour supprimer un cours par son ID
     app.delete('/api/courses/:id', async (req, res) => {
-        try {
-            const { id } = req.params;
-            // On vérifie que l'ID est valide avant de l'utiliser
-            if (!ObjectId.isValid(id)) {
-                return res.status(400).json({ message: "ID de cours invalide." });
-            }
-            
-            // On convertit l'ID en un objet MongoDB et on supprime le document
-            const result = await coursesCollection.deleteOne({ _id: new ObjectId(id) });
-
-            if (result.deletedCount === 0) {
-                return res.status(404).json({ message: "Cours non trouvé." });
-            }
-
-            res.status(200).json({ message: "Cours supprimé avec succès." });
-        } catch (error) {
-            console.error("Erreur lors de la suppression du cours :", error);
-            res.status(500).json({ message: "Erreur interne du serveur." });
+        const { id } = req.params;
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "ID de cours invalide." });
         }
+        const result = await coursesCollection.deleteOne({ _id: new ObjectId(id) });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: "Cours non trouvé." });
+        }
+        res.status(200).json({ message: "Cours supprimé avec succès." });
     });
 
 
@@ -76,7 +71,7 @@ async function run() {
     });
 
   } catch (err) {
-    console.error("Échec de la connexion à MongoDB", err);
+    console.error("Échec de la connexion à MongoDB. Vérifiez votre chaîne de connexion dans le fichier .env.", err);
   }
 }
 
